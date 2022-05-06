@@ -42,6 +42,7 @@ def get_index_map(training_image_type, parameter):
 # Collect the index maps for all the samples
 df.loc[:, 'index_map'] = df.apply(lambda x: get_index_map(x['training_image_type'],
                                                        x['simulation_parameters']), axis=1)
+df = df.reset_index(drop=True)
 
 #%%
 def plot_sim_index(training_image, sim_image, index_map):
@@ -71,53 +72,12 @@ def plot_sim_index(training_image, sim_image, index_map):
     ax3.axis('off')
     plt.show()
 
+if __name__=='__main__':
+    training_image, sim_image, index_map = get_simulation_maps('stone', df.sample().iloc[0].at['simulation_parameters'])
+    plot_sim_index(training_image, sim_image, index_map)
+    #%%
+    plt.hist(np.sort(index_map.reshape(-1)), bins=100)
+    plt.show()
 
-training_image, sim_image, index_map = get_simulation_maps('stone', df.sample().iloc[0].at['simulation_parameters'])
-plot_sim_index(training_image, sim_image, index_map)
-#%%
-plt.hist(np.sort(index_map.reshape(-1)), bins=100)
-plt.show()
-
-
-#%%
-from sklearn import linear_model
-
-def histogram_metric(index_map_1d):
-    X = np.log(np.sort(np.histogram(index_map_1d, bins=100)[0]))
-    lm = linear_model.LinearRegression()
-    X = X[X > 0]
-    lm.fit(X.reshape(-1, 1), range(len(X)))  # fitting the model
-    return lm.coef_
-
-histogram_metric(index_map)
 
 #%%
-plt.plot(np.sort(np.histogram(index_map.reshape(-1), bins=100)[0]))
-plt.show()
-
-#%%
-df['hist_coef'] = np.reshape(df['index_map'], -1).apply(histogram_metric)
-
-lowest = df.sort_values('hist_coef').iloc[0]
-
-highest  = df.sort_values('hist_coef').iloc[-1]
-ax = plt.subplot(221)
-ax.imshow(lowest['index_map'])
-ax.axis('off')
-ax = plt.subplot(222)
-ax.imshow(highest['index_map'])
-ax.axis('off')
-
-ax = plt.subplot(223)
-index_map_1d = lowest['index_map'].reshape(-1)
-X = np.log(np.sort(np.histogram(index_map_1d, bins=100)[0]))
-ax.plot(X)
-ax.axis('off')
-
-ax = plt.subplot(224)
-index_map_1d = highest['index_map'].reshape(-1)
-X = np.log(np.sort(np.histogram(index_map_1d, bins=100)[0]))
-ax.plot(X)
-ax.axis('off')
-plt.show()
-
