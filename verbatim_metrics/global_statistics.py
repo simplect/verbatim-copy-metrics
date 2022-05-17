@@ -6,7 +6,9 @@ from sklearn import linear_model
 from verbatim_metrics.data import df, get_simulation_maps
 
 training_image, sim_image, index_map = get_simulation_maps('stone',
-                                                           df.sample().iloc[0].at['simulation_parameters'])
+from verbatim_metrics.plot import plot_dendrogram
+
+df.sample().iloc[0].at['simulation_parameters'])
 
 
 #%%
@@ -20,6 +22,8 @@ def global_metric(index_map):
     metrics['pixels_used'] = np.sum(X > 1)
     metrics['pixels_power'] = np.sum(X > 1) * np.mean(X)
     metrics['pixels_reused'] = np.sum(X > 1) / len(X)
+    X = index_map
+    metrics['pixels_used'] = np.sum(np.in1d(np.arange(X.shape[0] * X.shape[1]), X)) / (X.shape[0] * X.shape[1])
     return metrics
 
 global_metric(index_map)
@@ -40,7 +44,7 @@ for x in dicts_metrics.items():
 #%%
 # Index(['training_image_type', 'simulation_parameters', 'index_map', 'mean',
 #        'variance', 'meanlog', 'variancelog', 'lincoef'],
-test_var = 'pixels_reused'
+test_var = 'pixels_used'
 lowest = df.sort_values(test_var).iloc[0]
 highest  = df.sort_values(test_var).iloc[-1]
 ax = plt.subplot(221)

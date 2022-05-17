@@ -50,7 +50,7 @@ def plot_sim_index(training_image, sim_image, index_map):
         np.meshgrid(np.arange(training_image.shape[0]) / training_image.shape[0],
                     np.arange(training_image.shape[1]) / training_image.shape[1]) +
         [np.ones_like(training_image)],
-        axis=-1);
+        axis=-1)
     fig, axs = plt.subplots(2, 2)
     ax1 = plt.subplot(221)
     ax1.imshow(training_image)
