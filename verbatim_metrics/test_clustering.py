@@ -3,20 +3,18 @@ import time as time
 
 import numpy as np
 import pandas as pd
-from scipy.ndimage import gaussian_filter
 import seaborn as sns
 
 import matplotlib.pyplot as plt
 
 from sklearn.feature_extraction.image import grid_to_graph
-from scipy.cluster.hierarchy import dendrogram
 from sklearn.cluster import AgglomerativeClustering
 
 from verbatim_metrics.data import df, get_simulation_maps
-from verbatim_metrics.non_spatial_connected import verbatim_intensity
+from verbatim_metrics.local_statistics import verbatim_intensity
 from verbatim_metrics.plot import plot_dendrogram
 
-training_image, sim_image, index_map = get_simulation_maps('stone',
+training_image, sim_image, index_map = get_simulation_maps('strebelle',
                                                            df.sample().iloc[0].at['simulation_parameters'])
 verbatim = verbatim_intensity(index_map)
 
@@ -27,10 +25,7 @@ plt.imshow(sim_image)
 plt.subplot(223)
 plt.imshow(verbatim)
 plt.show()
-#%%
-#np.save('data/training_low_verbatim',training_image)
-#np.save('data/sim_low_verbatim',sim_image)
-#np.save('data/index_low_verbatim', index_map)
+
 
 #%% Dummy data
 # perfect

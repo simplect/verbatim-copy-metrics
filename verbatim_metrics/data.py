@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 # Plot parameters
 plt.rcParams["figure.dpi"] = 320 # Dependent on screen
-plt.rcParams["figure.constrained_layout.use"] = True
+#plt.rcParams["figure.constrained_layout.use"] = True
 
 # Configuration
 config_simulations_path = '/Users/merijn/stack/3. Studie/36._thesis/36.04 simulations/QS_Simulation4Verbatim'
