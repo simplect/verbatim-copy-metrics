@@ -14,7 +14,7 @@ from verbatim_metrics.data import df, get_simulation_maps
 from verbatim_metrics.local_statistics import verbatim_intensity
 from verbatim_metrics.plot import plot_dendrogram
 
-training_image, sim_image, index_map = get_simulation_maps('strebelle',
+training_image, sim_image, index_map = get_simulation_maps('stone',
                                                            df.sample().iloc[0].at['simulation_parameters'])
 verbatim = verbatim_intensity(index_map)
 
@@ -75,7 +75,7 @@ ax1.set_title('Training image')
 ax1.axis('off')
 ax2 = plt.subplot(222)
 ax2.imshow(verbatim)
-ax2.set_title('Simulation')
+ax2.set_title('Verbatim')
 ax2.axis('off')
 
 ax3 = plt.subplot(223)
@@ -102,11 +102,12 @@ def plot_cluster_contours(ward):
             ],
             linewidths=0.5
         )
-ax3.set_title('Index map')
+plot_cluster_contours(ward)
+ax3.set_title('Clusters')
 ax3.axis('off')
 plt.show()
 
-plot_dendrogram(ward, truncate_mode="level",  p=8, color_threshold=threshold)
+plot_dendrogram(ward, truncate_mode="level",  p=5, color_threshold=threshold)
 
 #%%
 

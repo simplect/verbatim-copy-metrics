@@ -4,6 +4,7 @@ import pandas as pd
 from skimage.draw import disk
 # perfect
 # Fully random
+from verbatim_metrics.data import get_simulation_maps, df
 from verbatim_metrics.local_statistics import verbatim_intensity
 
 
@@ -53,31 +54,3 @@ def generate_synthetic_data(patches_range = 100, samples_per_param=10):
     return pd.DataFrame({'u_patches':params,
                          'index_map':maps,
                          'verbatim_percentage': verbatim_percentages})
-
-
-if __name__=='__main__':
-    maps = generate_synthetic_data()
-    plt.imshow(maps.index_map[200])
-    plt.show()
-    #%%
-
-    plt.rcParams["figure.constrained_layout.use"] = True
-    plotloc = 330
-    plt.suptitle('Noisy circles synthetic data of varying verbatim')
-    plt.subplot(131)
-    plt.axis('off')
-    plt.title(maps.verbatim_percentage[1])
-    plt.imshow(maps.index_map[1])
-    plt.subplot(132)
-    plt.axis('off')
-    plt.title(maps.verbatim_percentage[100])
-    plt.imshow(maps.index_map[100])
-    plt.subplot(133)
-    plt.axis('off')
-    plt.title(maps.verbatim_percentage[800])
-    plt.imshow(maps.index_map[800])
-    plt.savefig('img/noisy_circles.png')
-    #%%
-    verbatim = verbatim_intensity(random_map)
-    plt.imshow(verbatim)
-    plt.show()

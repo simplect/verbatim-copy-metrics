@@ -6,9 +6,11 @@ from scipy.ndimage import correlate
 
 from sklearn.feature_extraction.image import grid_to_graph
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.decomposition import PCA
 
 from verbatim_metrics.data import df, get_simulation_maps
 from verbatim_metrics.plot import plot_dendrogram
+
 
 
 def verbatim_intensity(index_map,
@@ -49,13 +51,59 @@ def verbatim_intensity(index_map,
     verbatim = verbatim[b:-b, b:-b]
     return verbatim
 
+def pattern_freq(index_map,
+                       l=200,
+                       b=3, # Window size around every pixel
+                       fun=None,
+                       post_fun=None,
+                       threshold=0 # All pixels below this are set to zero
+                       ):
+    # Only works with square images for now
+    l = index_map.shape[0]
+    # Can possibly move this elsewhere for performance reasons
+    orig_map = np.arange(l ** 2).reshape((l, l))
+    orig_map = np.pad(orig_map, (b, b), mode='constant', constant_values=-1)  # -1
+    index_map = np.pad(index_map, (b, b), mode='constant', constant_values=-2)  # -2
+    # Single point
+    verbatim = np.zeros_like(orig_map, dtype=np.double)
+    verbatim = np.zeros((l**2, b*2+1, b*2+1))
+    for i in range(b, l + b):
+        for j in range(b, l + b):
+            (r, c) = np.divmod(index_map[i, j], l)
+            r = r + b
+            c = c + b
+            # print(i, j)
+            # print(r,c)
+            # print(rand_map[i - b:i + b + 1, j - b:j + b + 1])
+            # print(orig_map[r - b:r + b + 1, c - b:c + b + 1])
+            if not fun:
+                fun = lambda a_index, b_original: a_index * (a_index == b_original)
+
+            verbatim[(i-b) * (j-b),: , :] = fun(index_map[i - b:i + b + 1, j - b:j + b + 1], orig_map[r - b:r + b + 1, c - b:c + b + 1])
+    return verbatim
+
+def pca_metrics():
+    test = pattern_freq(index_map, b=10)
+    freq = np.sum(test > 0, axis=0)
+    freq
+    plt.imshow(freq)
+    plt.show()
+    # %%
+    X = test.reshape(test.shape[0], -1) > 0
+    #        X = test.reshape(test.shape[0],-1)
+    X[:, 220] = False
+
+    pca = PCA(n_components=10)
+    pca.fit(X)
+    print(pca.explained_variance_ratio_)
+    plt.title(np.round(pca.explained_variance_ratio_[0], 5))
+    plt.imshow(pca.components_[0].reshape(21, 21))
 
 # noinspection PyUnreachableCode
 if False:
         #%% Testing
         training_image, sim_image, index_map = get_simulation_maps('stone',
                                                                    df.sample().iloc[0].at['simulation_parameters'])
-
         #%% Test the max verbatim possible in a random map
         scores = []
         for _ in range(100):
