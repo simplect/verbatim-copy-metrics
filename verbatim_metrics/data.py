@@ -20,9 +20,9 @@ df = pd.DataFrame({'training_image_type': file_parameters[:, 0],
                    'simulation_parameters': file_parameters[:, 1],
                    'index_map': np.NAN})
 # Keep only stone or strebelle, as their index map sizes are different
-df = df[df['training_image_type'] == 'stone']
+df_full = df[df['training_image_type'] == 'stone']
 # Create a random sample
-df = df.sample(n=100, replace=True)
+df = df_full.sample(n=100, replace=True)
 
 # %%
 def get_simulation_maps(training_image_type, parameter):

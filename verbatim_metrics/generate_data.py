@@ -8,7 +8,7 @@ from verbatim_metrics.data import get_simulation_maps, df
 from verbatim_metrics.local_statistics import verbatim_intensity
 
 
-def generate_noisy_circles_map(u_patches, l=200):
+def generate_noisy_circles_map(u_patches, l=200, noise=0.06, perfect_circles=True):
     l = 200
     max_index = l ** 2
     perfect_map = np.arange(max_index).reshape((l, l))
@@ -29,7 +29,10 @@ def generate_noisy_circles_map(u_patches, l=200):
 
         rr1, cc1 = disk(random_place, radius)
         rr2, cc2 = disk(perfect_place, radius)
-        noise_mask = np.random.binomial(1, 0.06, len(rr1)) == 0
+        # Dropout
+
+        noise_mask = np.random.binomial(1, noise, len(rr1)) == (0 if perfect_circles else 1)
+
         rr1 = rr1[noise_mask]
         rr2 = rr2[noise_mask]
         cc1 = cc1[noise_mask]
@@ -38,7 +41,6 @@ def generate_noisy_circles_map(u_patches, l=200):
         random_map[rr1, cc1] = perfect_map[rr2, cc2]
         zero_map[rr1, cc1] = perfect_map[rr2, cc2]
     return random_map, (np.sum(zero_map > -1)/max_index)
-
 
 def generate_synthetic_data(patches_range = 100, samples_per_param=10):
     maps = []

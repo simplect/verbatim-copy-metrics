@@ -1,5 +1,6 @@
-#%%
+# %%
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.ndimage import correlate
@@ -12,52 +13,45 @@ from verbatim_metrics.data import df, get_simulation_maps
 from verbatim_metrics.plot import plot_dendrogram
 
 
-
 def verbatim_intensity(index_map,
-                       l=200,
-                       b=10, # Window size around every pixel
+                       b=3,  # Window size around every pixel
                        fun=None,
                        post_fun=None,
-                       threshold=0 # All pixels below this are set to zero
+                       threshold=0  # All pixels below this are set to zero
                        ):
     # Only works with square images for now
     l = index_map.shape[0]
     # Can possibly move this elsewhere for performance reasons
     orig_map = np.arange(l ** 2).reshape((l, l))
+    verbatim = np.zeros(l ** 2)
+#    verbatim = np.zeros_like(orig_map, dtype=np.double)
     orig_map = np.pad(orig_map, (b, b), mode='constant', constant_values=-1)  # -1
     index_map = np.pad(index_map, (b, b), mode='constant', constant_values=-2)  # -2
+    bw = b * 2 + 1
+    index_sw = sliding_window_view(index_map, (bw, bw)).reshape(-1, bw, bw)
+    orig_sw = sliding_window_view(orig_map, (bw,bw)).reshape(-1, bw, bw)
     # Single point
-    verbatim = np.zeros_like(orig_map, dtype=np.double)
-    for i in range(b, l + b):
-        for j in range(b, l + b):
-            (r, c) = np.divmod(index_map[i, j], l)
-            r = r + b
-            c = c + b
-            # print(i, j)
-            # print(r,c)
-            # print(rand_map[i - b:i + b + 1, j - b:j + b + 1])
-            # print(orig_map[r - b:r + b + 1, c - b:c + b + 1])
-            if not fun:
-                fun = lambda a_index, b_original: (
-                              np.sum(a_index == b_original) - 1) / ((b * 2 + 1) ** 2)
+    for n in np.arange(l ** 2):
+        if not fun:
+            fun = lambda a_index, b_original: (np.sum(a_index == b_original) - 1) / (bw**2)
+        verbatim[n] = fun(index_sw[n],
+                                orig_sw[index_sw[n][b,b]])
+        if post_fun:
+            verbatim[i, j] = post_fun(verbatim[i, j])
+        if threshold > 0:
+            verbatim[verbatim < threshold] = 0
+    return verbatim.reshape(l,l)
 
-            verbatim[i, j] = fun(index_map[i - b:i + b + 1, j - b:j + b + 1],
-                                 orig_map[r - b:r + b + 1, c - b:c + b + 1])
-            if post_fun:
-                verbatim[i, j] = post_fun(verbatim[i, j])
-            if threshold > 0:
-                verbatim[verbatim < threshold] = 0
-            # Suprise verbatim[i, j] =  np.log(1/verbatim[i, j])
-    verbatim = verbatim[b:-b, b:-b]
-    return verbatim
+
+v= verbatim_intensity(index_map)
+plt.imshow(v);plt.show()
+#%%
 
 def pattern_freq(index_map,
-                       l=200,
-                       b=3, # Window size around every pixel
-                       fun=None,
-                       post_fun=None,
-                       threshold=0 # All pixels below this are set to zero
-                       ):
+                 b=3,  # Window size around every pixel
+                 fun=None,
+                 offset=False  # Calculate the offsets in stead of the numbers
+                 ):
     # Only works with square images for now
     l = index_map.shape[0]
     # Can possibly move this elsewhere for performance reasons
@@ -65,21 +59,19 @@ def pattern_freq(index_map,
     orig_map = np.pad(orig_map, (b, b), mode='constant', constant_values=-1)  # -1
     index_map = np.pad(index_map, (b, b), mode='constant', constant_values=-2)  # -2
     # Single point
-    verbatim = np.zeros_like(orig_map, dtype=np.double)
-    verbatim = np.zeros((l**2, b*2+1, b*2+1))
-    for i in range(b, l + b):
-        for j in range(b, l + b):
-            (r, c) = np.divmod(index_map[i, j], l)
-            r = r + b
-            c = c + b
-            # print(i, j)
-            # print(r,c)
-            # print(rand_map[i - b:i + b + 1, j - b:j + b + 1])
-            # print(orig_map[r - b:r + b + 1, c - b:c + b + 1])
-            if not fun:
-                fun = lambda a_index, b_original: a_index * (a_index == b_original)
+    verbatim = np.zeros((l ** 2, b * 2 + 1, b * 2 + 1))
 
-            verbatim[(i-b) * (j-b),: , :] = fun(index_map[i - b:i + b + 1, j - b:j + b + 1], orig_map[r - b:r + b + 1, c - b:c + b + 1])
+    bw = b * 2 + 1
+    index_sw = sliding_window_view(index_map, (bw, bw)).reshape(-1, bw, bw)
+    orig_sw = sliding_window_view(orig_map, (bw,bw)).reshape(-1, bw, bw)
+
+    for n in np.arange(l ** 2):
+        if not fun:
+            fun = lambda a_index, b_original: a_index * (a_index == b_original)
+
+        verbatim[n, :, :] = fun(index_sw[n],
+                                orig_sw[index_sw[n][b,b]])
+
     return verbatim
 
 def pca_metrics():
@@ -99,89 +91,90 @@ def pca_metrics():
     plt.title(np.round(pca.explained_variance_ratio_[0], 5))
     plt.imshow(pca.components_[0].reshape(21, 21))
 
+
 # noinspection PyUnreachableCode
 if False:
-        #%% Testing
-        training_image, sim_image, index_map = get_simulation_maps('stone',
-                                                                   df.sample().iloc[0].at['simulation_parameters'])
-        #%% Test the max verbatim possible in a random map
-        scores = []
-        for _ in range(100):
-            random_map = np.random.randint(0,200**2,200**2).reshape((200,200))
-            verbatim_map = verbatim_intensity(random_map)
+    # %% Testing
+    training_image, sim_image, index_map = get_simulation_maps('stone',
+                                                               df.sample().iloc[0].at['simulation_parameters'])
+    # %% Test the max verbatim possible in a random map
+    scores = []
+    for _ in range(100):
+        random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
+        verbatim_map = verbatim_intensity(random_map)
+        score = np.max(verbatim_map)
+        scores.append(score)
+    np.max(scores)  # Result: max : 0.0065351, min: 0.00226
+    # %% Test if this changes for different kernel sizes
+    scores = []
+    for kernel_size in np.arange(1, 50):
+        print(kernel_size)
+        for _ in range(1):
+            random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
+            verbatim_map = verbatim_intensity(random_map, b=kernel_size)
             score = np.max(verbatim_map)
             scores.append(score)
-        np.max(scores) # Result: max : 0.0065351, min: 0.00226
-        #%% Test if this changes for different kernel sizes
-        scores = []
-        for kernel_size in np.arange(1,50):
-            print(kernel_size)
-            for _ in range(1):
-                random_map = np.random.randint(0,200**2,200**2).reshape((200,200))
-                verbatim_map = verbatim_intensity(random_map, b=kernel_size)
-                score = np.max(verbatim_map)
-                scores.append(score)
-        np.max(scores),np.min(scores) # Result: max : 0.112, min: 0.00226
-        #%% 50 50 image, see if we get 50% verbatim on average
-        perfect_map = np.arange(200 ** 2).reshape((200,200))
-        random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
-        perfect_map[100:] = random_map[100:]
-        scores = []
-        for kernel_size in np.arange(1,10):
-            print(kernel_size)
-            verbatim_map = verbatim_intensity(perfect_map, b=kernel_size)
-            score = np.mean(verbatim_map)
-            scores.append(score)
-        np.max(scores),np.min(scores) # Result: max : 0.112, min: 0.00226
+    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
+    # %% 50 50 image, see if we get 50% verbatim on average
+    perfect_map = np.arange(200 ** 2).reshape((200, 200))
+    random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
+    perfect_map[100:] = random_map[100:]
+    scores = []
+    for kernel_size in np.arange(1, 10):
+        print(kernel_size)
+        verbatim_map = verbatim_intensity(perfect_map, b=kernel_size)
+        score = np.mean(verbatim_map)
+        scores.append(score)
+    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
 
-        #%% 50% of the image is now random but with multiple edges
-        perfect_map = np.arange(200 ** 2).reshape((200,200))
-        random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
-        b = 15
-        scores = []
-        bs = []
-        expected = []
-        for b in range(5,50,5):
-            b=40
-            for r in range(0, int(200/b), 2):
-                for i in range(0,int(200/b), 2):
-                    random_map[b*r:b*(r+1), b*i:b*(i+1)] = (
-                        perfect_map[b*r:b*(r+1), b*i:b*(i+1)])
-    #            perfect_map[:100, :100] = random_map[:100, :10*i]
-            perfect_map = random_map
-            plt.imshow(perfect_map)
-            plt.show()
-            # We expect to have 7*7*15*15 verbatim in a 200*200 map
-            #
-            # (7*7*15*15)/(200*200) = 0.2756
-            expected.append()
-            print(kernel_size)
-            verbatim_map = verbatim_intensity(perfect_map, b=2)
-            score = np.mean(verbatim_map)
-            scores.append(score)
-            bs.append(b)
-            break
-        np.max(scores),np.min(scores) # Result: max : 0.112, min: 0.00226
-        np.argmax(scores) #-> 2
-        #%% We can try the same with the circle maps
-        maps = generate_synthetic_data()
-        #%%
-        scores = []
-        for _, row in maps.iterrows():
-            verbatim_map = verbatim_intensity(row.index_map, b=2)
-            score = np.mean(verbatim_map)
-            scores.append(score)
-        np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
-        np.argmax(scores)  # -> 2
-        # Average error -0.04
-        np.mean(scores - maps.verbatim_percentage)
-        # max error -> -0.1060
-        np.min(scores - maps.verbatim_percentage)
-        plt.plot(np.sort(scores - maps.verbatim_percentage))
+    # %% 50% of the image is now random but with multiple edges
+    perfect_map = np.arange(200 ** 2).reshape((200, 200))
+    random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
+    b = 15
+    scores = []
+    bs = []
+    expected = []
+    for b in range(5, 50, 5):
+        b = 40
+        for r in range(0, int(200 / b), 2):
+            for i in range(0, int(200 / b), 2):
+                random_map[b * r:b * (r + 1), b * i:b * (i + 1)] = (
+                    perfect_map[b * r:b * (r + 1), b * i:b * (i + 1)])
+        #            perfect_map[:100, :100] = random_map[:100, :10*i]
+        perfect_map = random_map
+        plt.imshow(perfect_map)
         plt.show()
+        # We expect to have 7*7*15*15 verbatim in a 200*200 map
+        #
+        # (7*7*15*15)/(200*200) = 0.2756
+        expected.append()
+        print(kernel_size)
+        verbatim_map = verbatim_intensity(perfect_map, b=2)
+        score = np.mean(verbatim_map)
+        scores.append(score)
+        bs.append(b)
+        break
+    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
+    np.argmax(scores)  # -> 2
+    # %% We can try the same with the circle maps
+    maps = generate_synthetic_data()
+    # %%
+    scores = []
+    for _, row in maps.iterrows():
+        verbatim_map = verbatim_intensity(row.index_map, b=2)
+        score = np.mean(verbatim_map)
+        scores.append(score)
+    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
+    np.argmax(scores)  # -> 2
+    # Average error -0.04
+    np.mean(scores - maps.verbatim_percentage)
+    # max error -> -0.1060
+    np.min(scores - maps.verbatim_percentage)
+    plt.plot(np.sort(scores - maps.verbatim_percentage))
+    plt.show()
 
 
-#%%
+# %%
 def cluster_metric(input_map):
     verbatim = verbatim_intensity(input_map)
     X = np.reshape(verbatim, (-1, 1))
@@ -224,24 +217,24 @@ def cluster_metric(input_map):
     flat_label = label.reshape(-1)
 
     metrics['within-cluster-range'] = (np.mean([np.max(flat_input[flat_label == i]) -
-                                               np.min(flat_input[flat_label == i]) for i in occ_index])
-                                      / max_index)
-#    plot_dendrogram(model)
+                                                np.min(flat_input[flat_label == i]) for i in occ_index])
+                                       / max_index)
+    #    plot_dendrogram(model)
     return metrics
 
 
-#%%
-if __name__=='__main__':
-    #%%
+# %%
+if __name__ == '__main__':
+    # %%
     training_image, sim_image, index_map = get_simulation_maps('strebelle',
                                                                df.sample().iloc[0].at['simulation_parameters'])
-    #%%
+    # %%
     metrics = cluster_metric(index_map)
     metrics
-    #%%
+    # %%
     plt.imshow(index_map)
     plt.show()
-    #%%
+    # %%
     dicts_metrics = np.reshape(df['index_map'], -1).apply(cluster_metric)
 
     for x in dicts_metrics.items():
