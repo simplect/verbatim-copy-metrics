@@ -10,30 +10,51 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import PCA
 
 from sklearn.linear_model import LinearRegression
-from verbatim_metrics.data import df_full,df, get_simulation_maps
+from verbatim_metrics.data import df_full, get_simulation_maps, get_simulation_maps_n, get_sim_handle
 from verbatim_metrics.local_statistics import extract_verbatim_windows, verbatim_intensity
 from verbatim_metrics.plot import plot_dendrogram
 from verbatim_metrics.generate_data import generate_noisy_circles_map, generate_synthetic_data
 
 
-# %% PCA Experiment RESULTS QS
+#%% PCA Experiment RESULTS QS
 # Sample verbatim windows then use PCA on it
-samples = 100
-params = []
-ratios = []
-first_transformed_comp = []
-second_transformed_comp = []
-third_transformed_comp = []
-first_component = []
-second_component = []
-third_component = []
-mean_intensity = []
-b = 3
-bb = b * 2 + 1
-# Synthetic or qs
+def collect_pca():
+    means_first_comp = np.zeros((15,200))
+    num_samples = 200
+    num_super_samples = 17
+    b = 3
+    bb = b * 2 + 1
+    # Synthetic or qs
+    d = []
+    params = df_full['simulation_parameters'].unique()
+    for current_super in range(num_super_samples):
+        print(f'Super sample {current_super}')
+        verbatim_windows = np.zeros((len(params), 200, num_samples, bb*bb))
+        for i in range(len(params)):
+            sim_handle = get_sim_handle('stone', params[i])
+            for n in range(1, 200):
+                realisation = get_simulation_maps_n('stone', params[i], n, sim_result=sim_handle)
+                verbatim_windows[i,n,:,:] =\
+                    extract_verbatim_windows(realisation['icm'],
+                                             b=b,
+                                             number_of_samples=num_samples).reshape(num_samples, -1)
+        X = verbatim_windows.reshape(len(params)*200*num_samples,-1) > 0
+        X[:, int((b * 2 + 1) ** 2 / 2)] = False  # Middle pixel zero
+        pca = PCA(n_components=3)
+        X_transformed = pca.fit_transform(X)
+        sub_result = X_transformed.reshape(len(params), 200, num_samples, 3)
+        sub_result_first_comp = sub_result[:,:,:,0]
+        mean_first_comp = sub_result_first_comp.mean(axis=2)
+        means_first_comp = means_first_comp + mean_first_comp
+    means_first_comp = means_first_comp / num_super_samples
+    return means_first_comp
 
-for param in df_full['simulation_parameters'].unique():
-    print(param)
+
+
+
+#%%dd
+for i in len(params):
+        print(param)
     ratios_sample = []
     index_maps = [get_simulation_maps('stone', param)[2] for _ in range(samples)]
     #verbatim_intensities = [np.sum(verbatim_intensity(index_map) > 0)/(200**2)
@@ -46,24 +67,25 @@ for param in df_full['simulation_parameters'].unique():
     X = verbatim_windows.reshape(verbatim_windows.shape[0], -1) > 0
     X[:, int((b*2+1)**2/2)] = False  # Middle pixel zero
     pca = PCA(n_components=3)
-    pca.fit(X)
-
+    X_transformed = pca.fit_transform(X)
+    np.mean(X_transformed[:, 0])
     ratios.append(pca.explained_variance_ratio_)
     first_transformed_comp.append(np.mean(np.dot(X, pca.components_[0,:])))
     params.append(param)
     #mean_intensity.append(np.mean(verbatim_intensities))
-    first_component.append(pca.components_[0, :].reshape(bb, bb))
-    second_component.append(pca.components_[1, :].reshape(bb, bb))
-    third_component.append(pca.components_[2, :].reshape(bb, bb))
+    d.append({'param': params,
+              'ratios': ratios,
+              'first_component_transformed': np.mean(np.dot(X, pca.components_[0,:])),
+              'second_component_transformed': np.mean(np.dot(X, pca.components_[0,:])),
+              'third_component_transformed': np.mean(np.dot(X, pca.components_[0,:])),
+              'first_component': pca.components_[0, :].reshape(bb, bb),
+              'second_component': pca.components_[1, :].reshape(bb, bb),
+              'third_component': pca.components_[2, :].reshape(bb, bb)})
+    break
 
-results = pd.DataFrame({'param': params,
-                        'ratios': ratios,
-                        'first_component_transformed': first_transformed_comp,
-                        'first_component': first_component,
-                        'second_component': second_component,
-                        'third_component': third_component,
-    #                    'mean_intensity': mean_intensity
-                                            })
+
+
+results = pd.DataFrame()
 #        results.to_pickle('data/windows.pickle')
 results['param'] = pd.to_numeric(results['param'])
 results = results.sort_values('param')
@@ -161,61 +183,3 @@ with sns.axes_style('white'):
         axis3[i].axis('off')
     #fig.savefig('img/first_components_synth.png', dpi=600, bbox_inches='tight')
     plt.show()
-
-# %%
-df['simulation_parameters'].unique()
-
-# %% Testing frequency windows
-index_map_n, verbatim = generate_noisy_circles_map(100)
-index_map, verbatim = generate_noisy_circles_map(10, perfect_circles=True, noise=0.6)
-#    training_image, sim_image, index_map = get_simulation_maps('stone',
-#                                                               df.sample().iloc[0].at['simulation_parameters'])
-# %%
-test = pattern_freq(index_map_n, b=10)
-X_n = test.reshape(test.shape[0], -1) > 0
-X_n[:, 220] = False
-test = pattern_freq(index_map, b=10)
-# X = test.reshape(test.shape[0],-1) > 0
-# X[:,220] = False
-from sklearn.decomposition import PCA
-
-pca = PCA(n_components=10)
-pca.fit(X)
-print(pca.explained_variance_ratio_)
-# print(pca.singular_values_[0])
-plt.subplot(232)
-plt.imshow(index_map)
-plt.title('index origin')
-plt.axis('off')
-plt.subplot(234)
-plt.title(np.round(pca.explained_variance_ratio_[0], 5))
-plt.imshow(pca.components_[0].reshape(21, 21))
-plt.axis('off')
-plt.subplot(235)
-plt.title(np.round(pca.explained_variance_ratio_[1], 5))
-plt.imshow(pca.components_[1].reshape(21, 21))
-plt.axis('off')
-plt.subplot(236)
-plt.title(np.round(pca.explained_variance_ratio_[2], 5))
-plt.imshow(pca.components_[2].reshape(21, 21))
-plt.axis('off')
-plt.suptitle(f'verbatim: {verbatim}')
-plt.show()
-
-fc = pca.transform(X)[:, 0]
-plt.imshow(fc.reshape(200, 200))
-plt.show()
-#%% test
-
-#training_image, sim_image, index_map = get_simulation_maps('stone', df.sample().iloc[0].at['simulation_parameters'])
-plt.subplot(131)
-plt.imshow(training_image)
-plt.axis('off')
-plt.subplot(132)
-plt.imshow(sim_image)
-plt.axis('off')
-plt.subplot(133)
-plt.imshow(verbatim_intensity(index_map))
-plt.axis('off')
-#plt.show()
-plt.savefig('img/verbatim_density.png',dpi=600, bbox_inches='tight')

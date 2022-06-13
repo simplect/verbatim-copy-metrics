@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 import pandas as pd
@@ -16,7 +15,6 @@ from verbatim_metrics.plot import plot_dendrogram
 def verbatim_intensity(index_map,
                        b=3,  # Window size around every pixel
                        fun=None,
-                       post_fun=None,
                        threshold=0  # All pixels below this are set to zero
                        ):
     # Only works with square images for now
@@ -24,58 +22,67 @@ def verbatim_intensity(index_map,
     # Can possibly move this elsewhere for performance reasons
     orig_map = np.arange(l ** 2).reshape((l, l))
     verbatim = np.zeros(l ** 2)
-#    verbatim = np.zeros_like(orig_map, dtype=np.double)
+    #    verbatim = np.zeros_like(orig_map, dtype=np.double)
     orig_map = np.pad(orig_map, (b, b), mode='constant', constant_values=-1)  # -1
     index_map = np.pad(index_map, (b, b), mode='constant', constant_values=-2)  # -2
     bw = b * 2 + 1
     index_sw = sliding_window_view(index_map, (bw, bw)).reshape(-1, bw, bw)
-    orig_sw = sliding_window_view(orig_map, (bw,bw)).reshape(-1, bw, bw)
+    orig_sw = sliding_window_view(orig_map, (bw, bw)).reshape(-1, bw, bw)
     # Single point
     for n in np.arange(l ** 2):
         if not fun:
-            fun = lambda a_index, b_original: (np.sum(a_index == b_original) - 1) / (bw**2)
+            fun = lambda a_index, b_original: (np.sum(a_index == b_original) - 1) / (bw ** 2)
         verbatim[n] = fun(index_sw[n],
-                                orig_sw[index_sw[n][b,b]])
-        if post_fun:
-            verbatim[i, j] = post_fun(verbatim[i, j])
+                          orig_sw[index_sw[n][b, b]])
+
         if threshold > 0:
             verbatim[verbatim < threshold] = 0
-    return verbatim.reshape(l,l)
+    return verbatim.reshape(l, l)
 
 
-v= verbatim_intensity(index_map)
-plt.imshow(v);plt.show()
-#%%
-
-def pattern_freq(index_map,
-                 b=3,  # Window size around every pixel
-                 fun=None,
-                 offset=False  # Calculate the offsets in stead of the numbers
-                 ):
+def extract_verbatim_windows(index_map,
+                             b=3,  # Pixels around the pixel in horizontal and vertical direction
+                             activation_function=None,  # Optional alternative function for calculating the activation
+                             sampling_rate=1,  #Randomly sample windows
+                             number_of_samples=None
+                             ):
     # Only works with square images for now
-    l = index_map.shape[0]
+    index_map_height = index_map.shape[0]
+    number_of_pixels = index_map_height ** 2
+    window_size = b * 2 + 1
+
     # Can possibly move this elsewhere for performance reasons
-    orig_map = np.arange(l ** 2).reshape((l, l))
-    orig_map = np.pad(orig_map, (b, b), mode='constant', constant_values=-1)  # -1
+    perfect_map = np.arange(number_of_pixels).reshape((index_map_height, index_map_height))
+    perfect_map_padded = np.pad(perfect_map, (b, b), mode='constant', constant_values=-1)  # -1
     index_map = np.pad(index_map, (b, b), mode='constant', constant_values=-2)  # -2
     # Single point
-    verbatim = np.zeros((l ** 2, b * 2 + 1, b * 2 + 1))
 
-    bw = b * 2 + 1
-    index_sw = sliding_window_view(index_map, (bw, bw)).reshape(-1, bw, bw)
-    orig_sw = sliding_window_view(orig_map, (bw,bw)).reshape(-1, bw, bw)
+    index_sw = sliding_window_view(index_map,
+                                   (window_size, window_size)).reshape(-1, window_size, window_size)
+    
+    orig_sw = sliding_window_view(perfect_map_padded,
+                                  (window_size, window_size)).reshape(-1, window_size, window_size)
+    if sampling_rate == 1:
+        window_indexes = np.arange(number_of_pixels)
+    else:
+        window_indexes = np.random.randint(0, number_of_pixels, int(number_of_pixels * sampling_rate))
 
-    for n in np.arange(l ** 2):
-        if not fun:
-            fun = lambda a_index, b_original: a_index * (a_index == b_original)
+    if number_of_samples is not None:
+        window_indexes = np.random.choice(window_indexes, number_of_samples)
 
-        verbatim[n, :, :] = fun(index_sw[n],
-                                orig_sw[index_sw[n][b,b]])
+    verbatim_windows = np.zeros((len(window_indexes), window_size, window_size))
+    for window_index in range(len(window_indexes)):
+        if not activation_function:
+            activation_function = lambda a_index, b_original: a_index * (a_index == b_original)
+        sliding_window_index = window_indexes[window_index]
+        verbatim_windows[window_index, :, :] = activation_function(index_sw[sliding_window_index],
+                                                           orig_sw[index_sw[sliding_window_index][b, b]])
 
-    return verbatim
+    return verbatim_windows
+
 
 def pca_metrics():
-    test = pattern_freq(index_map, b=10)
+    test = extract_verbatim_windows(index_map, b=10)
     freq = np.sum(test > 0, axis=0)
     freq
     plt.imshow(freq)
@@ -92,86 +99,12 @@ def pca_metrics():
     plt.imshow(pca.components_[0].reshape(21, 21))
 
 
-# noinspection PyUnreachableCode
-if False:
-    # %% Testing
-    training_image, sim_image, index_map = get_simulation_maps('stone',
-                                                               df.sample().iloc[0].at['simulation_parameters'])
-    # %% Test the max verbatim possible in a random map
-    scores = []
-    for _ in range(100):
-        random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
-        verbatim_map = verbatim_intensity(random_map)
-        score = np.max(verbatim_map)
-        scores.append(score)
-    np.max(scores)  # Result: max : 0.0065351, min: 0.00226
-    # %% Test if this changes for different kernel sizes
-    scores = []
-    for kernel_size in np.arange(1, 50):
-        print(kernel_size)
-        for _ in range(1):
-            random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
-            verbatim_map = verbatim_intensity(random_map, b=kernel_size)
-            score = np.max(verbatim_map)
-            scores.append(score)
-    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
-    # %% 50 50 image, see if we get 50% verbatim on average
-    perfect_map = np.arange(200 ** 2).reshape((200, 200))
-    random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
-    perfect_map[100:] = random_map[100:]
-    scores = []
-    for kernel_size in np.arange(1, 10):
-        print(kernel_size)
-        verbatim_map = verbatim_intensity(perfect_map, b=kernel_size)
-        score = np.mean(verbatim_map)
-        scores.append(score)
-    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
-
-    # %% 50% of the image is now random but with multiple edges
-    perfect_map = np.arange(200 ** 2).reshape((200, 200))
-    random_map = np.random.randint(0, 200 ** 2, 200 ** 2).reshape((200, 200))
-    b = 15
-    scores = []
-    bs = []
-    expected = []
-    for b in range(5, 50, 5):
-        b = 40
-        for r in range(0, int(200 / b), 2):
-            for i in range(0, int(200 / b), 2):
-                random_map[b * r:b * (r + 1), b * i:b * (i + 1)] = (
-                    perfect_map[b * r:b * (r + 1), b * i:b * (i + 1)])
-        #            perfect_map[:100, :100] = random_map[:100, :10*i]
-        perfect_map = random_map
-        plt.imshow(perfect_map)
-        plt.show()
-        # We expect to have 7*7*15*15 verbatim in a 200*200 map
-        #
-        # (7*7*15*15)/(200*200) = 0.2756
-        expected.append()
-        print(kernel_size)
-        verbatim_map = verbatim_intensity(perfect_map, b=2)
-        score = np.mean(verbatim_map)
-        scores.append(score)
-        bs.append(b)
-        break
-    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
-    np.argmax(scores)  # -> 2
-    # %% We can try the same with the circle maps
-    maps = generate_synthetic_data()
-    # %%
-    scores = []
-    for _, row in maps.iterrows():
-        verbatim_map = verbatim_intensity(row.index_map, b=2)
-        score = np.mean(verbatim_map)
-        scores.append(score)
-    np.max(scores), np.min(scores)  # Result: max : 0.112, min: 0.00226
-    np.argmax(scores)  # -> 2
-    # Average error -0.04
-    np.mean(scores - maps.verbatim_percentage)
-    # max error -> -0.1060
-    np.min(scores - maps.verbatim_percentage)
-    plt.plot(np.sort(scores - maps.verbatim_percentage))
-    plt.show()
+def verbatim_metric(input_map):
+    verbatim = verbatim_intensity(input_map)
+    max_index = (input_map.shape[0] ** 2)
+    metrics = {}
+    metrics['verbatim_estimated_percentage'] = (np.sum(verbatim > 0)) / max_index * 100
+    return metrics
 
 
 # %%
@@ -208,10 +141,11 @@ def cluster_metric(input_map):
     max_index = (input_map.shape[0] ** 2)
     metrics = {}
     metrics['mean_cluster_size'] = np.mean(occ_count) / max_index
+    metrics['estimated_verbatim_percentage'] = np.sum(occ_count) / max_index
     metrics['var_cluster_size'] = np.var(occ_count)
     metrics['num_clusters'] = len(occ_count)
     metrics['mean_cluster_size'] = metrics['mean_cluster_size'] * metrics['num_clusters']
-    metrics['percent_verbatim'] = np.sum(verbatim) / max_index
+    metrics['percent_verbatim'] = (np.sum(verbatim > 0) / max_index)
     # Within cluster statistics
     flat_input = input_map.reshape(-1)
     flat_label = label.reshape(-1)
@@ -222,86 +156,3 @@ def cluster_metric(input_map):
     #    plot_dendrogram(model)
     return metrics
 
-
-# %%
-if __name__ == '__main__':
-    # %%
-    training_image, sim_image, index_map = get_simulation_maps('strebelle',
-                                                               df.sample().iloc[0].at['simulation_parameters'])
-    # %%
-    metrics = cluster_metric(index_map)
-    metrics
-    # %%
-    plt.imshow(index_map)
-    plt.show()
-    # %%
-    dicts_metrics = np.reshape(df['index_map'], -1).apply(cluster_metric)
-
-    for x in dicts_metrics.items():
-        for y in x[1].items():
-            df.loc[x[0], y[0]] = y[1]
-
-    # %%
-    # Index(['training_image_type', 'simulation_parameters', 'index_map', 'mean',
-    #        'variance', 'meanlog', 'variancelog', 'lincoef'],
-    test_var = 'gradient'
-    lowest = df.sort_values(test_var).iloc[1]
-    highest = df.sort_values(test_var).iloc[-1]
-    ax = plt.subplot(221)
-    ax.imshow(lowest['index_map'])
-    ax.axis('off')
-    ax = plt.subplot(222)
-    ax.imshow(highest['index_map'])
-    ax.axis('off')
-
-    ax = plt.subplot(223)
-    # ax.imshow(np.diff(lowest['index_map'], axis=0))
-    index_map = lowest['index_map']
-    n = index_map.shape[0]
-    lookup_y = np.arange(n ** 2).reshape((n, n)).T
-    index_map_y = lookup_y[np.divmod(index_map, n)]
-    gradient_l = (np.abs(((np.gradient(index_map)[1] + np.gradient(index_map_y)[0]) / 2)))
-    gradient_l[gradient_l > 0] = 1 / gradient_l[gradient_l > 0]
-    ax.imshow(gradient_l)
-    ax.axis('off')
-
-    ax = plt.subplot(224)
-    # ax.imshow(np.diff(lowest['index_map'], axis=0))
-    index_map = highest['index_map']
-    n = index_map.shape[0]
-    lookup_y = np.arange(n ** 2).reshape((n, n)).T
-    index_map_y = lookup_y[np.divmod(index_map, n)]
-    gradient = (np.abs(((np.gradient(index_map)[1] + np.gradient(index_map_y)[0]) / 2)))
-    gradient[gradient > 0] = 1 / gradient[gradient > 0]
-    ax.imshow(gradient)
-    ax.axis('off')
-    plt.show()
-
-    # %%
-    ax = plt.subplot(121)
-    ax.imshow(index_map)
-    ax.axis('off')
-    ax = plt.subplot(122)
-    filter_length = 4  # surrounding pixels to weight
-    filter = [-1 / filter_length for i in range(int(filter_length / 2))] \
-             + [1] + [-1 / filter_length for i in range(int(filter_length / 2))]
-    corr_map = correlate(index_map, [[1 / 2, -1 / 2]], mode='constant', cval=0)
-    corr_map[corr_map > 4] = 5
-    # corr_map = corr_map / np.max(corr_map)
-    plt.imshow(corr_map)
-    plt.show()
-
-    # %%
-    # Reintrepret the index map to work with row direction.
-    n = 200
-    t = 4030
-    lookup_y = np.arange(n ** 2).reshape((n, n)).T
-    lookup_y = lookup_x.T
-    np.divmod(index_map, n)
-    index_map_y = lookup_y[np.divmod(index_map, n)]
-
-    ax = plt.subplot(121)
-    plt.imshow(index_map)
-    ax = plt.subplot(122)
-    plt.imshow(index_map_y)
-    plt.show()
