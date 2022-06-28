@@ -18,7 +18,7 @@ from verbatim_metrics.generate_data import generate_noisy_circles_map, generate_
 
 #%% PCA Experiment RESULTS QS
 # Sample verbatim windows then use PCA on it
-def collect_pca():
+def collect_pca(ti='stone'):
     means_first_comp = np.zeros((15,200))
     num_samples = 200
     num_super_samples = 17
@@ -31,9 +31,9 @@ def collect_pca():
         print(f'Super sample {current_super}')
         verbatim_windows = np.zeros((len(params), 200, num_samples, bb*bb))
         for i in range(len(params)):
-            sim_handle = get_sim_handle('stone', params[i])
+            sim_handle = get_sim_handle(ti, params[i])
             for n in range(1, 200):
-                realisation = get_simulation_maps_n('stone', params[i], n, sim_result=sim_handle)
+                realisation = get_simulation_maps_n(ti, params[i], n, sim_result=sim_handle)
                 verbatim_windows[i,n,:,:] =\
                     extract_verbatim_windows(realisation['icm'],
                                              b=b,

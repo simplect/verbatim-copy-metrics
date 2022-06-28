@@ -26,7 +26,7 @@ def apply_metric(param_k, metric, samples=10, interval=1):
     for i in n_range:
         if samples is None:
             param_n = i
-        maps_dict = get_simulation_maps_n('stone', param_k, param_n)
+        maps_dict = get_simulation_maps_n('strebelle', param_k, param_n)
 
         d.append({'param': maps_dict['k'],
                   'param_n': maps_dict['n']})
@@ -54,9 +54,9 @@ params = [param for param in df_full['simulation_parameters'].unique()]
 print('Done')
 result['param'] = pd.to_numeric(result['param'])
 result = result.sort_values('param')
-#result.to_pickle('data/qs_verbatim_metric.pickle')
+#result.to_pickle('data/qs_verbatim_metric-streb.pickle')
 
-#result =  pd.read_pickle('data/qs_verbatim_metric.pickle')
+#result =  pd.read_pickle('data/qs_verbatim_metric-streb.pickle')
 #%% Figure 4c
 sns.set()
 sns.set_theme(style="darkgrid")
@@ -71,43 +71,12 @@ p.set(xlabel="QS parameter k",
 ax1.set_xticks(np.arange(0,15), ['1', 1.01, 1.02, 1.05, 1.1, 1.15, 1.2, 1.3, 1.5,
                                                  1.7, '2', 2.5, '3', '5', '10'])
 plt.show()
-#fig.savefig('img/qs_verbatim_metric.png', dpi=600, bbox_inches='tight')
+#fig.savefig('img/qs_verbatim_metric-streb.png', dpi=600, bbox_inches='tight')
 
-#%% Figure data exploration
-#% Explore the data
-def plot_sim_index(index_map):
-    sourceIndex = np.stack(
-        np.meshgrid(np.arange(index_map.shape[0]) / index_map.shape[0],
-                    np.arange(index_map.shape[1]) / index_map.shape[1]) +
-        [np.ones_like(index_map)],
-        axis=-1)
-    return sourceIndex.reshape(-1, 3)[index_map]
-
-df = df_full.sample(n=100, replace=True)
-with sns.axes_style('white'):
-    #sim_image, realisation, index_map = get_simulation_maps('stone', '5.0' )
-    fig, (ax0,ax1) = plt.subplots(1,2)
-    p1 = ax0.imshow(realisation, cmap='gray')
-    ax0.axis('off')
-    ax0.set_anchor('W')
-    p1 = ax1.imshow(plot_sim_index(index_map), cmap='viridis')
-    ax1.axis('off')
-    #fig.savefig('img/qs_sample_high_verbatim_realistic.png', dpi=600, bbox_inches='tight')
-    plt.show()
-with sns.axes_style('white'):
-    sim_image, realisation, index_map = get_simulation_maps('stone', '5.0' )
-    fig, (ax0,ax1) = plt.subplots(1,2)
-    p1 = ax0.imshow(sim_image, cmap='gray')
-    ax0.axis('off')
-    ax0.set_anchor('W')
-    p1 = ax1.imshow(plot_sim_index(perfect_map), cmap='viridis')
-    ax1.axis('off')
-    fig.savefig('img/qs_sample_perfect.png', dpi=600, bbox_inches='tight')
-    plt.show()
 #%% Figure 4a
 #% Explore the data
 with sns.axes_style('white'):
-    #sim_image, realisation, index_map = get_simulation_maps('stone', '3.0')
+    #sim_image, realisation, index_map = get_simulation_maps('strebelle', '3.0')
     fig, ((ax0,ax1), (ax2, ax3)) = plt.subplots(2,2)
     p1 = ax0.imshow(sim_image, cmap='gray')
     ax0.axis('off')
@@ -121,7 +90,7 @@ with sns.axes_style('white'):
     fig.colorbar(p2, ax=ax3, shrink=0.8)
     ax3.axis('off')
     ax3.set_anchor('W')
-    fig.savefig('img/qs_input_intensity_output_low.png', dpi=600, bbox_inches='tight')
+    fig.savefig('img/qs_input_intensity_output_high-low.png', dpi=600, bbox_inches='tight')
     plt.show()
 
 #%% Cluster metric
@@ -131,11 +100,11 @@ params = [param for param in df_full['simulation_parameters'].unique()]
 print('Done')
 result['param'] = pd.to_numeric(result['param'])
 result = result.sort_values('param')
-#result.to_pickle('data/qs_cluster_metric.pickle')
-result = pd.read_pickle('data/qs_cluster_metric.pickle')
+#result.to_pickle('data/qs_cluster_metric-streb.pickle')
+result = pd.read_pickle('data/qs_cluster_metric-streb.pickle')
 
 #%% Figure 6
-#result = pd.read_pickle('data/qs_cluster_metric.pickle')
+#result = pd.read_pickle('data/qs_cluster_metric-streb.pickle')
 result.mean_cluster_size = result.mean_cluster_size / result.num_clusters
 sns.set()
 sns.set_theme(style="darkgrid")
@@ -147,7 +116,7 @@ p.set(xlabel="QS parameter k",
       ylabel="Found clusters (V2)")
 ax1.set_xticks(np.arange(0,15), ['1', 1.01, 1.02, 1.05, 1.1, 1.15, 1.2, 1.3, 1.5,
                                                  1.7, '2', 2.5, '3', '5', '10'])
-fig.savefig('img/qs_cluster_metric.png', dpi=600, bbox_inches='tight')
+fig.savefig('img/qs_cluster_metric-streb.png', dpi=600, bbox_inches='tight')
 plt.show()
 # Error of the found clusters
 X = result.loc[:,'param'].to_numpy().reshape(-1,1)
@@ -164,7 +133,7 @@ print('Done')
 
 result['param'] = pd.to_numeric(result['param'])
 result = result.sort_values('param')
-#result.to_pickle('data/qs_verbatim_metric_full.pickle')
+result.to_pickle('data/qs_verbatim_metric_full-streb.pickle')
 #%% Data for full collection clustering
 print('Starting data collection')
 
@@ -174,9 +143,10 @@ print('Done')
 
 result['param'] = pd.to_numeric(result['param'])
 result = result.sort_values('param')
-#result.to_pickle('data/qs_cluster_metric_full.pickle')
+result.to_pickle('data/qs_cluster_metric_full-streb.pickle')
 #%% Full analysis heatplot 6a
-result = pd.read_pickle('data/qs_verbatim_metric_full.pickle')
+result = pd.read_pickle('data/qs_verbatim_metric_full-streb.pickle')
+result.verbatim_estimated_percentage /= 100
 sns.set()
 sns.set_theme(style="darkgrid")
 sns.set_context("paper")
@@ -185,13 +155,13 @@ data_pivot = (result
               .sort_index(axis=1, ascending=True)
               .sort_index(axis=0, ascending=False))
 fig, (ax1) = plt.subplots(1,1, figsize=(9,6))
-p = sns.heatmap(data=data_pivot, ax=ax1)
-p.set(xlabel='QS parameter k', ylabel='QS parameter N')
+p = sns.heatmap(data=data_pivot, ax=ax1,vmin=0, vmax=0.9)
+p.set(xlabel='QS parameter k', ylabel='QS parameter N',  )
 #ax1.set_yticklabels(ax1.get_yticks(), rotation = 0)
-#fig.savefig('img/qs_heatmap_k_n.png', dpi=600, bbox_inches='tight')
+fig.savefig('img/qs_heatmap_k_n-streb.png', dpi=600, bbox_inches='tight')
 plt.show()
 #%% Full analysis heatplot 6c
-result = pd.read_pickle('data/qs_cluster_metric_full.pickle')
+result = pd.read_pickle('data/qs_cluster_metric_full-streb.pickle')
 sns.set()
 sns.set_theme(style="darkgrid")
 sns.set_context("paper")
@@ -203,15 +173,15 @@ fig, (ax1) = plt.subplots(1,1, figsize=(9,6))
 p = sns.heatmap(data=data_pivot, ax=ax1)
 p.set(xlabel='QS parameter k', ylabel='QS parameter N')
 #ax1.set_yticklabels(ax1.get_yticks(), rotation = 0)
-fig.savefig('img/qs_heatmap_k_n_num_clusters.png', dpi=600, bbox_inches='tight')
+fig.savefig('img/qs_heatmap_k_n_num_clusters-streb.png', dpi=600, bbox_inches='tight')
 plt.show()
 #%% Plot 6d Distribution of full analysis
-result = pd.read_pickle('data/qs_verbatim_metric_full.pickle')
+result = pd.read_pickle('data/qs_verbatim_metric_full-streb.pickle')
 vm_result = result.verbatim_estimated_percentage.to_numpy()
 def normalize(narray):
     return 2.*(narray - np.min(narray))/np.ptp(narray)-1
 vm_result = normalize(vm_result)
-result = pd.read_pickle('data/qs_cluster_metric_full.pickle')
+result = pd.read_pickle('data/qs_cluster_metric_full-streb.pickle')
 cl_result = normalize(result.num_clusters.to_numpy())
 result = np.load('data/mean_first_comp_qs.npy') #PCA
 pca_result = normalize(result.reshape(-1))
@@ -220,12 +190,12 @@ df = pd.concat([pd.DataFrame({'value': vm_result, 'type': 'verbatim'}),
                 pd.DataFrame({'value': pca_result, 'type': 'pca'}) ], ignore_index=True)
 
 sns.kdeplot(data=df, x='value', hue='type')
-plt.savefig('img/heatmap_kde.png', dpi=600, bbox_inches='tight')
+plt.savefig('img/heatmap_kde-streb.png', dpi=600, bbox_inches='tight')
 plt.show()
 #%% Full analysis heatplot 6b PCA
-#%time result = collect_pca()
-#np.save('data/mean_first_comp_qs.npy', result)
-result = np.load('data/mean_first_comp_qs.npy')
+#%time result = collect_pca('strebelle')
+#np.save('data/mean_first_comp_qs-streb.npy', result)
+result = np.load('data/mean_first_comp_qs-streb.npy')
 params = [float(x) for x in df_full['simulation_parameters'].unique()]
 result_df = pd.DataFrame.from_records(result.T, columns=params)
 result_df = (result_df
@@ -238,7 +208,7 @@ sns.set_context("paper")
 fig, (ax1) = plt.subplots(1,1, figsize=(9,6))
 p = sns.heatmap(data=result_df, ax=ax1)
 p.set(xlabel='QS parameter k', ylabel='QS parameter N')
-fig.savefig('img/qs_heatmap_k_n_PCA.png', dpi=600, bbox_inches='tight')
+fig.savefig('img/qs_heatmap_k_n_PCA-streb.png', dpi=600, bbox_inches='tight')
 plt.show()
 
 #%%

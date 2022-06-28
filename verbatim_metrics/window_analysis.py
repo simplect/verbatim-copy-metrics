@@ -69,19 +69,24 @@ results['param'] = pd.to_numeric(results['param'])
 results = results.sort_values('param')
 #    results.to_pickle('data/pca_qs_results.pickle')
 #%% Figure 6a
+results = pd.read_pickle('data/pca_qs_results.pickle')
 sns.set()
 sns.set_theme(style="darkgrid")
 sns.set_context("paper")
-fig, (ax1) = plt.subplots(1, 1, figsize=(5, 4))
+fig, (ax1) = plt.subplots(1, 1, figsize=(5, 5))
 p = sns.scatterplot(data=results, x='param',
                     y='first_component_transformed', ax=ax1)
-p.set(xlabel="QS Parameter",
-      ylabel="First PCA Component")
+p.set(xlabel="QS parameter k",
+      ylabel="PCA metric (V4)")
+ax1.set_yscale('log', base=2)
+#ax1.set_xticks(np.arange(0,15), ['1', 1.01, 1.02, 1.05, 1.1, 1.15, 1.2, 1.3, 1.5,
+#                                                 1.7, '2', 2.5, '3', '5', '10'])
 #p = sns.scatterplot(data=results, x='param',
 #                    y='mean_intensity', ax=ax2)
 #p.set(xlabel="QS Parameter",
 #      ylabel="Fraction of verbatim pixels")
 #plt.show()
+
 plt.savefig('img/pca_transformed_qs.png', dpi=600, bbox_inches='tight')
 
 # %% PCA Experiment RESULTS synthetic
@@ -99,7 +104,7 @@ mean_intensity = []
 b = 3
 bb = b * 2 + 1
 # Synthetic or qs
-df = generate_synthetic_data(patches_range=100, samples_per_param=10, noise=0.40)
+df = generate_synthetic_data(patches_range=600, samples_per_param=10, noise=0.40)
 
 for param, group in df.groupby(df.u_patches):
     ratios_sample = []
@@ -129,17 +134,20 @@ results = pd.DataFrame({'param': params,
 #        results.to_pickle('data/windows.pickle')
 results['param'] = pd.to_numeric(results['param'])
 results = results.sort_values('param')
-#    results.to_pickle('data/pca_qs_results.pickle')
+results.to_pickle('data/synth_qs_results.pickle')
 #%% Figure 6c
 sns.set()
 sns.set_theme(style="darkgrid")
 sns.set_context("paper")
-fig, (ax1) = plt.subplots(1, 1, figsize=(5, 4))
+fig, (ax1) = plt.subplots(1, 1, figsize=(5, 5))
 p = sns.scatterplot(data=results, x='mean_intensity',
                     y='first_component_transformed', ax=ax1)
-p.set(xlabel="Verbatim fraction",
-      ylabel="First PCA component")
+p.set(xlabel="Percentage of pixels verbatim (V1)",
+      ylabel="PCA Metric (V4)")
+ax1.yaxis.set_ticks(np.arange(0, 2.1, 0.25))
+plt.plot([0, 80], [0,2], linewidth=1, color='green')
 #plt.show()
+
 plt.savefig('img/pca_transformed_synth.png', dpi=600, bbox_inches='tight')
 
 

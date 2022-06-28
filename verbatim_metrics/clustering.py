@@ -13,6 +13,8 @@ from scipy.cluster.hierarchy import dendrogram
 from sklearn.cluster import AgglomerativeClustering
 
 from verbatim_metrics.data import df, get_simulation_maps
+from verbatim_metrics.local_statistics import verbatim_intensity
+
 
 def plot_dendrogram(model, **kwargs):
     # Create linkage matrix and then plot the dendrogram
@@ -66,8 +68,8 @@ def preprocess(training_image, index_map):
     return input_map
 input_map = preprocess(training_image, index_map)
 #%%
-input_map
-X = np.reshape(input_map, (-1, input_map.shape[2]))
+verbatim = verbatim_intensity(index_map)
+X = np.reshape(verbatim, (-1, 1))
 X
 # Connectivity matrix based on the size of the input. So there is a connection for
 # every horizontal and vertical neighbor of a pixel.
@@ -79,7 +81,7 @@ n_clusters = 30  # number of regions
 ward = AgglomerativeClustering(
     n_clusters=n_clusters, linkage="ward", connectivity=connectivity, compute_distances=True, compute_full_tree=True
 )
-threshold = 3
+threshold = 3.5
 
 ward = AgglomerativeClustering(
     linkage="ward",
@@ -96,48 +98,75 @@ label = np.reshape(ward.labels_, input_map.shape[0:2])
 print("Elapsed time: ", time.time() - st)
 print("Number of pixels: ", label.size)
 print("Number of clusters: ", np.unique(label).size)
+#%%
+with sns.axes_style('white'):
+    #sim_image, realisation, index_map = get_simulation_maps('stone', '3.0')
 
+    fig, ((ax0,ax1,ax3)) = plt.subplots(1,3, figsize=(15,5))
+
+    sourceIndex = np.stack(
+        np.meshgrid(np.arange(training_image.shape[0]) / training_image.shape[0],
+                    np.arange(training_image.shape[1]) / training_image.shape[1]) +
+        [np.ones_like(training_image)],
+        axis=-1);
+    sim_image = sourceIndex.reshape(-1, 3)[index_map]
+    p1 = ax0.imshow(sim_image, cmap='gray')
+    ax0.axis('off')
+    ax0.set_title('ICM')
+
+    p1 = ax1.imshow(verbatim)
+    ax1.axis('off')
+    ax1.set_anchor('W')
+    ax1.set_title('Verbatim density map')
+
+    p2 = ax3.imshow(label, cmap='tab20')
+    ax3.axis('off')
+    ax3.set_anchor('W')
+    ax3.set_title('Clusters')
+    fig.savefig('img/qs_clusters.png', dpi=600, bbox_inches='tight')
+    plt.show()
+#%%
 
 fig, axs = plt.subplots(2, 2)
-ax1 = plt.subplot(221)
-ax1.imshow(training_image)
-ax1.set_title('Training image')
-ax1.axis('off')
-ax2 = plt.subplot(222)
-ax2.imshow(sim_image)
-ax2.set_title('Simulation')
+ax2 = plt.subplot(221)
+ax2.imshow(sim_image, cmap='gray')
+ax2.set_title('Realisation')
 ax2.axis('off')
 
-ax3 = plt.subplot(223)
-sourceIndex = np.stack(
-    np.meshgrid(np.arange(training_image.shape[0]) / training_image.shape[0],
-                np.arange(training_image.shape[1]) / training_image.shape[1]) +
-    [np.ones_like(training_image)],
-    axis=-1);
-ax3.imshow(sourceIndex)
-ax3.imshow(sourceIndex.reshape(-1, 3)[index_map])
-ax3.set_title('Index origin')
+ax3 = plt.subplot(222)
+
+ax3.set_title('ICM')
 ax3.axis('off')
-ax3 = plt.subplot(224)
+ax3 = plt.subplot(223)
 ax3.imshow(index_map)
 ax3.imshow(sourceIndex.reshape(-1, 3)[index_map])
 #ax3.imshow(label)
 plt.imshow(label)
-def plot_cluster_contours(ward):
-    for l in range(ward.n_clusters_):
-        plt.contour(
-            label == l,
-            colors=[
-                plt.cm.nipy_spectral(l / float(ward.n_clusters_)),
-            ],
-            linewidths=0.5
-        )
-ax3.set_title('Index map')
-ax3.axis('off')
-plt.show()
+#%%
 
-plot_dendrogram(ward, truncate_mode="level",  p=8, color_threshold=threshold)
+fig, ax0 = plt.subplots(1, 1, figsize=(15, 3))
+model = ward
+truncate_mode="level"
+p=7
+color_threshold=threshold
+counts = np.zeros(model.children_.shape[0])
+n_samples = len(model.labels_)
+for i, merge in enumerate(model.children_):
+    current_count = 0
+    for child_idx in merge:
+        if child_idx < n_samples:
+            current_count += 1  # leaf node
+        else:
+            current_count += counts[child_idx - n_samples]
+    counts[i] = current_count
 
+linkage_matrix = np.column_stack(
+    [model.children_, model.distances_, counts]
+).astype(float)
+
+# Plot the corresponding dendrogram
+dendrogram(linkage_matrix, p=p, color_threshold=color_threshold, truncate_mode=truncate_mode)
+fig.savefig('img/qs_dendogram.png', dpi=600, bbox_inches='tight')
 #%%
 model = ward
 

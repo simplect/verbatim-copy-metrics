@@ -138,6 +138,36 @@ print('Done')
 
 #result.to_pickle('data/synth_verbatim_metric.pickle')
 #result = pd.read_pickle('data/synth_verbatim_metric.pickle')
+#%% Figure 3
+def plot_sim_index(index_map):
+    sourceIndex = np.stack(
+        np.meshgrid(np.arange(index_map.shape[0]) / index_map.shape[0],
+                    np.arange(index_map.shape[1]) / index_map.shape[1]) +
+        [np.ones_like(index_map)],
+        axis=-1)
+    return sourceIndex.reshape(-1, 3)[index_map]
+with sns.axes_style('white'):
+    fig, (ax0,ax1, ax2) = plt.subplots(1,3)
+    i = 00
+    index_map = df.iloc[i,1]
+    verbatim_percentage = np.round(df.iloc[i,2],2)
+    p1 = ax0.imshow(plot_sim_index(index_map), cmap='viridis')
+    ax0.set_title(f'{verbatim_percentage}')
+    ax0.axis('off')
+    i = 800
+    index_map = df.iloc[i, 1]
+    verbatim_percentage = np.round(df.iloc[i,2],2)
+    ax1.set_title(f'{verbatim_percentage}')
+    p1 = ax1.imshow(plot_sim_index(index_map), cmap='viridis')
+    ax1.axis('off')
+    i = 5000
+    index_map = df.iloc[i, 1]
+    verbatim_percentage = np.round(df.iloc[i,2],2)
+    ax2.set_title(f'{verbatim_percentage}')
+    p1 = ax2.imshow(plot_sim_index(index_map), cmap='viridis')
+    ax2.axis('off')
+    fig.savefig('img/noisy_circles_crop.png', dpi=326, bbox_inches='tight')
+    plt.show()
 #%% Figure 4b
 sns.set()
 sns.set_theme(style="darkgrid")
@@ -186,25 +216,31 @@ print('Done')
 #%%
 result = pd.read_pickle('data/synth_cluster_metric.pickle')
 result.mean_cluster_size = result.mean_cluster_size / result.num_clusters
+result.verbatim_percentage = result.verbatim_percentage * 100
+result.mean_cluster_size = result.mean_cluster_size *100
 #%% Figure 6
 sns.set()
 sns.set_theme(style="darkgrid")
 sns.set_context("paper")
-fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(13,4))
+fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(17,5))
 p = sns.scatterplot(data=result, x='n_patches',
                     y='num_clusters', ax=ax1 )
 p.set(xlabel="Number of verbatim patches",
-      ylabel="Found clusters")
+      ylabel="Number of verbatim clusters (V2)",
+      ylim=(-1.5,75),
+      xlim=(-1.5,75))
+ax1.axline([0,0],[80,80], color='green')
 p = sns.scatterplot(data=result, x='verbatim_percentage',
                     y='num_clusters', ax=ax2 )
-p.set(xlabel="Verbatim factor",
-      ylabel="Found clusters")
+p.set(xlabel="Percentage of pixels verbatim (truth)",
+      ylabel="Number of verbatim clusters (V2)")
+ax2.axline([0,0],[50,50], color='green')
 p = sns.scatterplot(data=result, x='verbatim_percentage',
                     y='mean_cluster_size', ax=ax3)
-p.set(xlabel="Verbatim factor",
-      ylabel="Average cluster size")
+p.set(xlabel="Percentage of pixels verbatim (truth)",
+      ylabel="Average verbatim cluster size % (V3)")
 fig.savefig('img/synth_cluster_metric.png', dpi=600, bbox_inches='tight')
-plt.show()
+#plt.show()
 # Error of the found clusters
 X = result.loc[:,'n_patches'].to_numpy().reshape(-1,1)
 y = result.loc[:,'num_clusters'].to_numpy().reshape(-1,1)

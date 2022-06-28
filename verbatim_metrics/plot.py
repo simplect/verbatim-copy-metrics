@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from scipy.cluster.hierarchy import dendrogram
 
+# Source: https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_dendrogram.html
 
 def plot_dendrogram(model, **kwargs):
     # Create linkage matrix and then plot the dendrogram
